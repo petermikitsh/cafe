@@ -1,7 +1,8 @@
 /*	nervosa-memory.pml
 	author: peter mikitsh */
 
-#define NC 2
+#define NC 4
+#define ARRAY_SIZE 10
 
 typedef Order {
 	byte customerID;
@@ -9,17 +10,17 @@ typedef Order {
 	bool fulfilled;
 }
 
-mtype = {COFFEE, TEA, NONE};
+mtype = {COFFEE, TEA};
 
 // Customer-Cashier state
-bit tempOrderSem = 1;
-bit placeOrderSem = 0;
+byte tempOrderSem = 1;
+byte placeOrderSem = 0;
 byte tempCustomerID;
 mtype tempBeverage;
 byte cashierIndex = 0;
 
 // Cashier-Barista state
-Order orders[20];
+Order orders[ARRAY_SIZE];
 byte baristaIndex = 0;
 byte unfulfilledOrders = 0;
 
@@ -63,15 +64,16 @@ do
 		  placeOrderSem--;
 
 		// Record the order
-		orders[cashierIndex].customerID = tempCustomerID;
-		orders[cashierIndex].beverage = tempBeverage;
-		
-		// Pass the order to barista
-		printf("CASHIER: Pass Customer #%d's order to barista.\n", orders[cashierIndex].customerID);
-		
-		unfulfilledOrders++;
-		cashierIndex++;
-		tempOrderSem++;
+		if
+			:: cashierIndex + 1 < ARRAY_SIZE ->
+					orders[cashierIndex].customerID = tempCustomerID;
+					orders[cashierIndex].beverage = tempBeverage;
+					printf("CASHIER: Pass Customer #%d's order to barista.\n",
+												orders[cashierIndex].customerID);
+					unfulfilledOrders++;
+					cashierIndex++;
+					tempOrderSem++;
+		fi;
      	}
 		
 od;
@@ -102,4 +104,12 @@ do
 		orders[myOrder].fulfilled = true;
 
 od;
+}
+
+ltl Safety {
+	[] (placeOrderSem <= 1) // #1: only one customer (at a time) placing an order
+}
+
+ltl Liveness {
+	<> (placeOrderSem > 0) // #1 Eventually some customer can place an order with the cashier.
 }
