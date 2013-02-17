@@ -1,4 +1,4 @@
-/*	nervosa-memory-newdesign.pml
+/*	nervosa-memory.pml
 	author: peter mikitsh */
 
 #define NC 2
@@ -7,16 +7,15 @@ typedef Order {
 	byte customerID;
 	mtype beverage;
 	bool fulfilled;
-	bool received;
 }
 
 mtype = {COFFEE, TEA, NONE};
 
 // Customer-Cashier state
-bit cashierSem = 1;
+bit tempOrderSem = 1;
+bit placeOrderSem = 0;
 byte tempCustomerID;
 mtype tempBeverage;
-bool orderReady;
 byte cashierIndex = 0;
 
 // Cashier-Barista state
@@ -30,8 +29,8 @@ do
 	::	// Enter Store; wait for cashier
 		printf("CUSTOMER #%d: Enters store.\n", _pid);
 		atomic {
-		  cashierSem > 0;
-		  cashierSem--;
+		  tempOrderSem > 0;
+		  tempOrderSem--;
      	}
 
 		// Record new customer
@@ -40,47 +39,41 @@ do
 		// Place order for coffee or tea
 		tempCustomerID = _pid;
 		if
-			:: _pid % 2 == 0 ->
-					printf("CUSTOMER #%d: Places order for COFFEE.\n", _pid);
-					tempBeverage = COFFEE;
-			:: _pid % 2 == 1 ->
-					printf("CUSTOMER #%d: Places order for TEA.\n", _pid);
-					tempBeverage = TEA;
+			:: true -> tempBeverage = COFFEE;
+			:: true -> tempBeverage = TEA;
 		fi;
+		printf("CUSTOMER #%d: Places order for %e.\n", _pid, tempBeverage);
 
 		// notify cashier we're ready to place an order
-		orderReady = true;
-
-		// wait for transaction to be recorded and release the cashier
-		orders[myIndex].received == true;
-		cashierSem++;
+		placeOrderSem++;
 
 		// Wait for drink
 		orders[myIndex].fulfilled == true;
-		printf("CUSTOMER #%d: Exits store with drink.\n", _pid);
-
+		printf("CUSTOMER #%d: Exits store with %e.\n", _pid, orders[myIndex].beverage);
 od;
 }
 
-active [1] proctype Cashier() {
+active proctype Cashier() {
 do
 	::	// Wait for a new customer
 		printf("CASHIER: Wait for new customer.\n");
-		orderReady == true;
+		
+		atomic {
+		  placeOrderSem > 0;
+		  placeOrderSem--;
 
 		// Record the order
 		orders[cashierIndex].customerID = tempCustomerID;
 		orders[cashierIndex].beverage = tempBeverage;
-		orders[cashierIndex].fulfilled = false;
-		orders[cashierIndex].received = true;
-		cashierIndex++;
 		
 		// Pass the order to barista
-		printf("CASHIER: Pass order to barista.\n");
+		printf("CASHIER: Pass Customer #%d's order to barista.\n", orders[cashierIndex].customerID);
+		
 		unfulfilledOrders++;
-
-		// Wait for the next order
-		orderReady = false;
+		cashierIndex++;
+		tempOrderSem++;
+     	}
+		
 od;
 }
 
@@ -99,15 +92,13 @@ do
 			myOrder = baristaIndex;
 			baristaIndex++;
 		}
-		if
-			:: orders[myOrder].beverage == TEA ->
-					printf("BARISTA #%d: Retrieves Customer #%d's order for TEA.\n", _pid, orders[myOrder].customerID);
-			:: orders[myOrder].beverage == COFFEE ->
-					printf("BARISTA #%d: Retrieves Customer #%d's order for COFFEE.\n", _pid, orders[myOrder].customerID);
-		fi;
+		printf("BARISTA #%d: Retrieves Customer #%d's order for %e.\n",
+					_pid, orders[myOrder].customerID, orders[myOrder].beverage);
 
 		// Make and deliver order
-		printf("BARISTA #%d: Makes and delivers order.\n", _pid);
+		printf("BARISTA #%d: Makes and delivers Customer #%d's order.\n",
+												_pid, orders[myOrder].customerID);
+
 		orders[myOrder].fulfilled = true;
 
 od;
