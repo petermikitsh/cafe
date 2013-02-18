@@ -3,15 +3,35 @@
 
 #define NC 4
 
-mtype = {COFFEE, TEA};
-chan request_cust_cash = [0] of {byte, chan, mtype}; //customer -> cashier request channel
-chan request_cash_bar = [0] of {byte, chan, mtype}; //cashier -> barista request channel
+
+/*	Global Data Types
+	request_cust_cash: customer -> cashier request channel
+	request_cash_bar: cashier -> barista request channel
+	bev: the beverage requested by the most recently processed customer (LTL use only)
+	rec_bev: the beverage received by the most rececently processed customer (LTL use only)
+	numOrders: Semaphore limiting at most one customer's order given to the cashier at a time
+	numOrdersReceived: Number of orders that have been recieved by customers
+	mtype: Beverages options at the cafe
+	*/
+chan request_cust_cash = [0] of {byte, chan, mtype};
+chan request_cash_bar = [0] of {byte, chan, mtype};
 mtype bev, rec_bev;
 byte numOrders = 0;
 byte numOrdersReceived;
+mtype = {COFFEE, TEA};
 
+/*	Customer: decides what beverage to order and sends a message to the cashier,
+	placing the order. Waits to recieve a reply from the barista, and leaves the cafe
+	once beverage is delivered to the customer.
+	*/
 active [NC] proctype Customer() {
 
+/*	Local Data Types
+	rec_customerID: the customer ID recieved from the barista
+	customer: the channel for an instance of this Customer process
+	beverage: the beverage the customer requested
+	rec_beverage: the beverage the customer received from the barista
+	*/
 byte rec_customerID;
 chan customer = [0] of {byte, mtype};
 mtype beverage, rec_beverage;
@@ -47,8 +67,14 @@ do
 od;
 }
 
+/*	Cashier: Takes a customer order and sends it to the barista. */
 active proctype Cashier() {
 
+/* Local data types
+	customerID: The customer ID received from the customer.
+	customer: A channel to the process from which the order was received.
+	beverage: The beverage requested from the customer.
+	*/
 byte customerID;
 chan customer;
 mtype beverage;
@@ -70,8 +96,16 @@ do
 od;
 }
 
+/*	Barista: Retrieves orders, one at a time, from the cashier. The order is made and delivered
+	to the customer using the embedded channel.
+	*/
 active [1] proctype Barista() {
 
+/*	Local data types
+	customerID: The customer ID for this order, received from the cashier
+	customer: The channel representing the process of the Customer related to this order
+	beverage: The beverage requested, recieved from the cashier
+	*/
 byte customerID;
 chan customer;
 mtype beverage;
@@ -90,6 +124,8 @@ do
 			
 od;
 }
+
+// Linear Temporal Logic
 
 // #4: The baristas always give the correct drink to the customer whose order they are working on.
 ltl SafetyDrink {

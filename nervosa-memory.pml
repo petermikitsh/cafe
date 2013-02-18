@@ -1,12 +1,18 @@
 /*	nervosa-memory.pml
 	author: peter mikitsh 
-	notes: LTL verifications will return corrects iff Settings > Max Depth is set to <=40.
-		   LivenessOrderPlaced can only be checked with NC set to <=2.
+	notes: LTL verifications will return corrects iff:
+		   - Settings > Max Depth is set to <=40.
+		   - LivenessOrderPlaced can only be checked with NC set to <=2.
 */
 
 #define NC 4
 #define ARRAY_SIZE 10
 
+/*	Order: Holds all state information regarding an order.
+	customerID: the customer's process ID
+	beverage: the drink requested by the customer
+	fulfilled: true when the barista makes the order
+	*/
 typedef Order {
 	byte customerID;
 	mtype beverage;
@@ -15,20 +21,37 @@ typedef Order {
 
 mtype = {COFFEE, TEA};
 
-// Customer-Cashier state
+/*	Customer-Cashier state
+	tempOrderSem: Allows one customer to set global var's at a time
+	placeOrderSem: Limits one customer to giving global state to the cashier
+	tempCustomerID: The customer ID for the order to be submitted
+	tempBeverage: The beverage choice for the order to be submitted
+	cashierIndex: A write index that increments as the cashier fills the array
+   */
 bit tempOrderSem = 1;
 bit placeOrderSem;
 byte tempCustomerID;
 mtype tempBeverage;
 byte cashierIndex = 0;
 
-// Cashier-Barista state
+/*	Cashier-Barista state
+	orders[ARRAY_SIZE]: A permanent storage array for orders given to the cashier
+	baristaIndex: The location in the array where the next order to be made is
+	unfulfilledOrders: A count of orders in the array waiting to be made by baristas
+	baristaOrderID_0: The ID of the customer barista 0 is working on (for LTL logic)
+	baristaOrderID_1: The ID of the customer barista 1 is working on (for LTL logic)
+	*/
 Order orders[ARRAY_SIZE];
 byte baristaIndex = 0;
 byte unfulfilledOrders = 0;
 byte baristaOrderID_0 = 0;
 byte baristaOrderID_1 = 1;
 
+
+/* Customer: Gets a location in the array, creates temporary variables
+   for ID and beverage preferences, and notifies cashier when ready to
+   place order.
+   */
 active [NC] proctype Customer() {
 byte myIndex;
 do
@@ -59,6 +82,10 @@ do
 od;
 }
 
+/* Takes temporary customer variables and places them in permanent
+   array storage. Notifies the Barista's of an available item to
+   prepare using a semaphore.
+   */
 active proctype Cashier() {
 do
 	::	// Wait for a new customer
@@ -87,6 +114,9 @@ do
 od;
 }
 
+/* Stores the customer ID's of orders currently being fulfilled in global memory.
+   Marks orders as fulfilled so the customer can leave the cafe.
+   */
 active [2] proctype Barista() {
 byte myOrder;
 do
@@ -122,6 +152,8 @@ do
 od;
 }
 
+
+// LINEAR TEMPORAL LOGIC
 
 // #1: only one customer (at a time) placing an order
 ltl SafetyOrder {
