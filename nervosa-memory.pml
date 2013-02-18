@@ -60,12 +60,15 @@ do
 		printf("CASHIER: Wait for new customer.\n");
 		
 		atomic {
-		  placeOrderSem > 0;
-		  placeOrderSem--;
+			placeOrderSem > 0;
+			placeOrderSem--;
 
-		// Record the order
-		if
-			:: cashierIndex + 1 < ARRAY_SIZE ->
+			printf("CASHIER: Selects customer.\n");
+
+			// Record the order
+			if
+				:: cashierIndex + 1 < ARRAY_SIZE ->
+					printf("CASHIER: Takes order.\n");
 					orders[cashierIndex].customerID = tempCustomerID;
 					orders[cashierIndex].beverage = tempBeverage;
 					printf("CASHIER: Pass Customer #%d's order to barista.\n",
@@ -73,7 +76,7 @@ do
 					unfulfilledOrders++;
 					cashierIndex++;
 					tempOrderSem++;
-		fi;
+			fi;
      	}
 		
 od;
@@ -97,8 +100,12 @@ do
 		printf("BARISTA #%d: Retrieves Customer #%d's order for %e.\n",
 					_pid, orders[myOrder].customerID, orders[myOrder].beverage);
 
-		// Make and deliver order
-		printf("BARISTA #%d: Makes and delivers Customer #%d's order.\n",
+		// Make order
+		printf("BARISTA #%d: Makes Customer #%d's order.\n",
+												_pid, orders[myOrder].customerID);
+
+		// Deliver order
+		printf("BARISTA #%d: Deliver Customer #%d's order.\n",
 												_pid, orders[myOrder].customerID);
 
 		orders[myOrder].fulfilled = true;
