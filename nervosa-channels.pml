@@ -96,12 +96,12 @@ ltl SafetyDrink {
 	[] (bev == rec_bev)
 }
 
-// #1: It?s always the case that at most one customer is giving an order to the cashier.
+// #1: It's always the case that at most one customer is giving an order to the cashier.
 ltl SafetyOrders {
 	[] (numOrders <= 1)
 }
 
-// #3. It?s always the case that eventually some customer receives a drink from a barista.
+// #3. It's always the case that eventually some customer receives a drink from a barista.
 ltl LivenessOrderReceived {
 	<> (numOrdersReceived > 0);
 }

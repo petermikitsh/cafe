@@ -1,5 +1,8 @@
 /*	nervosa-memory.pml
-	author: peter mikitsh */
+	author: peter mikitsh 
+	notes: LTL verifications will return corrects iff Settings > Max Depth is set to <=40.
+		   LivenessOrderPlaced can only be checked with NC set to <=2.
+*/
 
 #define NC 4
 #define ARRAY_SIZE 10
@@ -13,8 +16,8 @@ typedef Order {
 mtype = {COFFEE, TEA};
 
 // Customer-Cashier state
-byte tempOrderSem = 1;
-byte placeOrderSem = 0;
+bit tempOrderSem = 1;
+bit placeOrderSem;
 byte tempCustomerID;
 mtype tempBeverage;
 byte cashierIndex = 0;
@@ -23,6 +26,8 @@ byte cashierIndex = 0;
 Order orders[ARRAY_SIZE];
 byte baristaIndex = 0;
 byte unfulfilledOrders = 0;
+byte baristaOrderID_0 = 0;
+byte baristaOrderID_1 = 1;
 
 active [NC] proctype Customer() {
 byte myIndex;
@@ -96,6 +101,10 @@ do
 		atomic {
 			myOrder = baristaIndex;
 			baristaIndex++;
+			if
+				:: _pid % 2 == 0 -> baristaOrderID_0 = orders[myOrder].customerID;
+				:: _pid % 2 == 1 -> baristaOrderID_1 = orders[myOrder].customerID;
+			fi;
 		}
 		printf("BARISTA #%d: Retrieves Customer #%d's order for %e.\n",
 					_pid, orders[myOrder].customerID, orders[myOrder].beverage);
@@ -113,10 +122,18 @@ do
 od;
 }
 
-ltl Safety {
-	[] (placeOrderSem <= 1) // #1: only one customer (at a time) placing an order
+
+// #1: only one customer (at a time) placing an order
+ltl SafetyOrder {
+	[] (placeOrderSem <= 1);
 }
 
-ltl Liveness {
-	<> (placeOrderSem > 0) // #1 Eventually some customer can place an order with the cashier.
+// #3: The baristas never work on the same order at the same time.
+ltl SafetyNoTwoSameCustomers {
+	[] (baristaOrderID_0 != baristaOrderID_1)
+}
+
+// #1 Eventually some customer can place an order with the cashier.
+ltl LivenessOrderPlaced {
+	<> (placeOrderSem > 0);
 }
