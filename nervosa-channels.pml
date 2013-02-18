@@ -43,7 +43,11 @@ mtype beverage;
 do
 	::	// Wait for a new customer
 		printf("CASHIER: Wait for new customer.\n");
+		// Select Customer
 		request_cust_cash ? customerID, customer, beverage ->
+			printf("CASHIER: Selected Customer #%d.\n", customerID);
+			// Take Order
+			printf("CASHIER: Take order from Customer #%d - %e.\n", customerID, beverage);
 			// Send order to Barista
 			printf("CASHIER: Pass Customer #%d's order to barista.\n", customerID);
 			request_cash_bar ! customerID, customer, beverage;
@@ -59,9 +63,13 @@ mtype beverage;
 do
 	::	// Wait for an order
 		printf("BARISTA #%d: Waits for an order.\n", _pid);
+		// Retrieve Order
 		request_cash_bar ? customerID, customer, beverage ->
+			printf("BARISTA #%d: Retrieves order for Customer #%d.\n", _pid, customerID);
+			// Make Order
+			printf("BARISTA #%d: Makes Customer #%d's order for %e.\n", _pid, customerID, beverage);
 			// Deliver to the customer
-			printf("BARISTA #%d: Makes and delivers Customer #%d's order for %e.\n", _pid, customerID, beverage);
+			printf("BARISTA #%d: Delivers Customer #%d's order for %e.\n", _pid, customerID, beverage);
 			customer ! customerID, beverage;
 			
 od;
